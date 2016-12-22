@@ -3,16 +3,17 @@
 #include <vector>
 #include <complex>
 #include <cassert>
+// #include "polynoms_multiply.h"
 
 typedef std::complex<double> com;
 
 const double M_PI = 3.14159265358979323846;
 const com I(0,1);
-const int div = 128;
-const double lambda = 1;
+const int div = 4;
+const double lambda = 10;
 const double k = 2 * M_PI/lambda;
 const double z = 1;
-const int magic = 128;
+const int magic = 4;
 
 struct discrete_fourier_transform {
     enum invert { eFFT = 1, eIFT = -1 };
@@ -26,7 +27,7 @@ private:
         assert((n & 1) == 0);
         std::vector<com> a0, a1;
         for (size_t i = 0; i < n; ++i) {
-            std::vector<com> &cur = (i == 0 ? a0 : a1);
+            std::vector<com> &cur = ((i & 1) == 0 ? a0 : a1);
             cur.push_back(a[i]);
         }
 
@@ -66,68 +67,87 @@ public:
     }
 };
 
-
-std::vector<std::vector<com> > retrieved(div), A0(div);
 std::vector<com> temp(div);
+std::vector<com> line_one(div, com(1, 0));
+std::vector<std::vector<com> > retrieved(div), A0(div, temp);
 
 com sqr(com a) {
     return a * a;
 }
 
 void init(){
-    std::vector<com> temp1(div, com(1, 0));
-    std::vector<com> temp2(div);
+	std::vector<com> temp1(div, com(1, 0));
+	std::vector<com> temp2(div);
 
-    for (int i = 0; i < div/ 3; ++i)    {
-        temp2[i] = com(0, 0);
-        temp2[i + div/3] = com(1, 0);
-        temp2[i + 2*(div/3)] = com(0, 0);
-    }
+	for (int i = 0; i < div/ 3; ++i)    {
+		temp2[i] = com(0, 0);
+		temp2[i + div/3] = com(1, 0);
+		temp2[i + 2*(div/3)] = com(0, 0);
+	}
 
-    retrieved.assign(div, temp2);
+	retrieved.assign(div, temp2);
 
-    for (int i = 0; i < div/3; ++i) {
-        retrieved[i + div/3] = temp1;
-    }
+	for (int i = 0; i < div/3; ++i) {
+		retrieved[i + div/3] = temp1;
+	}
 
-    A0.assign(div,  temp1);
-}
-com H(int i, int j) {
-    return exp(i * k / 2 * z *(sqr(i) + sqr(j)));
-}
-
-
-void Gerchberg_Saxton() {
-    std::vector<std::vector<com> >fi(div,temp), W(div,temp), F(div,temp), F1(div,temp),
-    W_else(div, temp);
     for (int i = 0; i < div; ++i) {
         for (int j = 0; j < div; ++j) {
-            W[i][j] = A0[i][j] * exp(I* fi[i][j]);
+            double real;
+            std::cin >> real;
+            A0[i][j] = com(real, 0);
         }
     }
-    for (int k = 0; k < magic; ++k) {
+}
+com H(int i, int j) {
+	return exp(i * k / 2 * z *(sqr(i) + sqr(j)));
+}
+
+std::vector<std::vector<com> > W(div, temp);
+
+void Gerchberg_Saxton() {
+	std::vector<std::vector<com> > fi(div,line_one), W(div,temp), F(div,temp), F1(div,temp),
+	W_else(div, temp); 
+	for (int i = 0; i < div; ++i) {
+		for (int j = 0; j < div; ++j) {
+			W[i][j] = A0[i][j] * exp(I* fi[i][j]);
+            std::cout << W[i][j]<< ' ' ;       
+     	}
+        std:: cout << '\n';
+	}
+
+	for (int k = 0; k < 1; ++k) {
+
+
         F = discrete_fourier_transform::ft(W, discrete_fourier_transform::eFFT);
-        for (int i = 0; i < div; ++i) {
-            for (int j = 0; j < div; ++j) {
-                F1[i][j] = retrieved[i][j] * F[i][j] / abs(F[i][j]);
+		for (int i = 0; i < div; ++i) {
+			for (int j = 0; j < div; ++j) {
+    			F1[i][j] = retrieved[i][j] * F[i][j] / abs(F[i][j]);
             }
-        }
+		}
+
+
+        W = discrete_fourier_transform::ft(F1, discrete_fourier_transform::eIFT);
+		
         for (int i = 0; i < div; ++i) {
-            for (int j = 0; j < div; ++j) {
-                W_else[i][j] = F1[i][j] * conj(exp(I* fi[i][j]));
+			for (int j = 0; j < div; ++j) {
+    			W[i][j] = A0[i][j] * W[i][j] / abs(W[i][j]);
             }
-        }
-        
-       W = discrete_fourier_transform::ft(W_else, discrete_fourier_transform::eIFT);
-        for (int i = 0; i < div; ++i) {
-            for (int j = 0; j < div; ++j) {
-                W[i][j] = A0[i][j] * W[i][j] / abs(W[i][j]);
-            }
-        }
+		}
+    
     }
 }
 
 int main() {
+    freopen("input.in", "r", stdin);
+    freopen("input.out", "w", stdout);
+    double a;
     init();
-    Gerchberg_Saxton();
+	Gerchberg_Saxton();
+    for (int i = 0; i < div; ++i) {
+        for (int j = 0; j < div; ++j) {
+            std::cout << real(W[i][j]) << ' ';
+        }
+        std::cout << '\n';
+    }
 }
