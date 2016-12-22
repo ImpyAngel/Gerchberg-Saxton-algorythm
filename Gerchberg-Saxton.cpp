@@ -8,11 +8,11 @@ typedef std::complex<double> com;
 
 const double M_PI = 3.14159265358979323846;
 const com I(0,1);
-const int div = 100;
+const int div = 128;
 const double lambda = 1;
 const double k = 2 * M_PI/lambda;
 const double z = 1;
-const int magic = 100;
+const int magic = 128;
 
 struct discrete_fourier_transform {
     enum invert { eFFT = 1, eIFT = -1 };
@@ -27,7 +27,7 @@ private:
         std::vector<com> a0, a1;
         for (size_t i = 0; i < n; ++i) {
             std::vector<com> &cur = (i == 0 ? a0 : a1);
-            cur.emplace_back(a[i]);
+            cur.push_back(a[i]);
         }
 
         one_dimensional_fft(a0, flag);
@@ -49,7 +49,7 @@ public:
     /// a.size() should be power of 2: 2^x for unsigned x.
     /// flag should eFFT for FFT or eIFT for IFT.
     /// a.size() == a[i].size for all i: 0 <= i < a.size().
-    static std::vector<std::vector<com>> ft(std::vector<std::vector<com>> a, invert flag) {
+    static std::vector<std::vector<com> > ft(std::vector<std::vector<com> > a, invert flag) {
         assert(__builtin_popcount(a.size()) == 1);
         for (size_t t = 0; t < 2; ++t) {
             for (size_t i = 0; i < a.size(); ++i) {
@@ -75,59 +75,59 @@ com sqr(com a) {
 }
 
 void init(){
-	std::vector<com> temp1(div, com(1, 0));
-	std::vector<com> temp2(div);
+    std::vector<com> temp1(div, com(1, 0));
+    std::vector<com> temp2(div);
 
-	for (int i = 0; i < div/ 3; ++i)    {
-		temp2[i] = com(0, 0);
-		temp2[i + div/3] = com(1, 0);
-		temp2[i + 2*(div/3)] = com(0, 0);
-	}
+    for (int i = 0; i < div/ 3; ++i)    {
+        temp2[i] = com(0, 0);
+        temp2[i + div/3] = com(1, 0);
+        temp2[i + 2*(div/3)] = com(0, 0);
+    }
 
-	retrieved.assign(div, temp2);
+    retrieved.assign(div, temp2);
 
-	for (int i = 0; i < div/3; ++i) {
-		retrieved[i + div/3] = temp1;
-	}
+    for (int i = 0; i < div/3; ++i) {
+        retrieved[i + div/3] = temp1;
+    }
 
-	A0.assign(div,  temp1);
+    A0.assign(div,  temp1);
 }
 com H(int i, int j) {
-	return exp(i * k / 2 * z *(sqr(i) + sqr(j)));
+    return exp(i * k / 2 * z *(sqr(i) + sqr(j)));
 }
 
 
 void Gerchberg_Saxton() {
-	std::vector<std::vector<com> >fi(div,temp), W(div,temp), F(div,temp), F1(div,temp),
-	W_else(div, temp);
-	for (int i = 0; i < div; ++i) {
-		for (int j = 0; j < div; ++j) {
-			W[i][j] = A0[i][j] * exp(I* fi[i][j]);
-		}
-	}
-
-	for (int k = 0; k < magic; ++k) {
-		// F = FFT(W);
-		for (int i = 0; i < div; ++i) {
-			for (int j = 0; j < div; ++j) {
-				F1[i][j] = retrieved[i][j] * F[i][j] / abs(F[i][j]);
-			}
-		}
-		for (int i = 0; i < div; ++i) {
-			for (int j = 0; j < div; ++j) {
-				W_else[i][j] = F1[i][j] * conj(exp(I* fi[i][j]));
-			}
-		}
-		// W = IFT(W_else);
-		for (int i = 0; i < div; ++i) {
-			for (int j = 0; j < div; ++j) {
-				W[i][j] = A0[i][j] * W[i][j] / abs(W[i][j]);
-			}
-		}
-	}
+    std::vector<std::vector<com> >fi(div,temp), W(div,temp), F(div,temp), F1(div,temp),
+    W_else(div, temp);
+    for (int i = 0; i < div; ++i) {
+        for (int j = 0; j < div; ++j) {
+            W[i][j] = A0[i][j] * exp(I* fi[i][j]);
+        }
+    }
+    for (int k = 0; k < magic; ++k) {
+        F = discrete_fourier_transform::ft(W, discrete_fourier_transform::eFFT);
+        for (int i = 0; i < div; ++i) {
+            for (int j = 0; j < div; ++j) {
+                F1[i][j] = retrieved[i][j] * F[i][j] / abs(F[i][j]);
+            }
+        }
+        for (int i = 0; i < div; ++i) {
+            for (int j = 0; j < div; ++j) {
+                W_else[i][j] = F1[i][j] * conj(exp(I* fi[i][j]));
+            }
+        }
+        
+       W = discrete_fourier_transform::ft(W_else, discrete_fourier_transform::eIFT);
+        for (int i = 0; i < div; ++i) {
+            for (int j = 0; j < div; ++j) {
+                W[i][j] = A0[i][j] * W[i][j] / abs(W[i][j]);
+            }
+        }
+    }
 }
 
 int main() {
-	init();
-	Gerchberg_Saxton();
+    init();
+    Gerchberg_Saxton();
 }
